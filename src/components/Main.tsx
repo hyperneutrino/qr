@@ -1081,9 +1081,11 @@ export function Main() {
                             poly={[1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1]}
                         />
                     </code>
-                    . Since there are only 32 possibilities, we can just use a
-                    lookup table to get the 15-bit format string for our error
-                    correction level and mask pattern.
+                    . The final result is then XOR'd against{" "}
+                    <code>101010000010010</code>. Since there are only 32
+                    possibilities, we can just use a lookup table to get the
+                    15-bit format string for our error correction level and mask
+                    pattern.
                 </p>
                 <p>
                     We find the optimal mask pattern by trying all of them and
