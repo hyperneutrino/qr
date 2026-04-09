@@ -197,7 +197,11 @@ export function Main() {
     }, [blockPolynomials, generatorPolynomial]);
 
     const errorsPerBlock = errorCorrectionCalculations.map((group) =>
-        group.map((block) => block.poly),
+        group.map((block) =>
+            new Array(versionInfo.errorWordsPerBlock - block.poly.length)
+                .fill(0)
+                .concat(block.poly),
+        ),
     );
 
     const finalOutput = useMemo(() => {
