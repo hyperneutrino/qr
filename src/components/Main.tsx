@@ -1168,6 +1168,25 @@ export function Main() {
                         [Jump to Top]
                     </a>
                 </p>
+                <p>
+                    Here's the exported data of the <b>selected mask</b> from
+                    earlier, <b>not</b> the optimal one shown right above:
+                </p>
+                <pre
+                    style={{
+                        width: "100%",
+                        overflow: "auto",
+                        whiteSpace: "pre",
+                    }}
+                >
+                    <code style={{ whiteSpace: "pre" }}>
+                        {"[\n" +
+                            masked[mask]
+                                .map((row) => "    [" + row.join(", ") + "]")
+                                .join(",\n") +
+                            "\n]"}
+                    </code>
+                </pre>
             </div>
         </>
     );
