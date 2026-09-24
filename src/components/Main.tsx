@@ -4,7 +4,6 @@ import {
     Fragment,
     useEffect,
     useMemo,
-    useRef,
     useState,
     type Dispatch,
     type SetStateAction,
@@ -22,8 +21,6 @@ import { QRImage, useMasked, useQRMatrix } from "./QRImage";
 const alphanumericTable = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 
 export function Main() {
-    const ref = useRef<HTMLInputElement>(null);
-
     const [input, setInput] = useSearchState("input", "", (x) => true);
     const [level, setLevel] = useSearchState("level", "M", (x) =>
         ["L", "M", "Q", "H"].includes(x),
@@ -32,6 +29,14 @@ export function Main() {
         "min-version",
         "1",
         (x) => /^([1-9]|[1-4][0-9])$/.test(x),
+    );
+    const [radius, setRadius] = useSearchState("radius", "20", (x) =>
+        /^([1-4]?[0-9]|50)$/.test(x),
+    );
+    const [cornerStyle, setCornerStyle] = useSearchState(
+        "corner-style",
+        "round",
+        (x) => ["round", "diagonal"].includes(x),
     );
     const [mask, setMask] = useState(0);
 
@@ -365,10 +370,14 @@ export function Main() {
     const penaltyTotals = penalties.map((p) => p.total);
     const bestMask = penaltyTotals.indexOf(Math.min(...penaltyTotals));
 
+    const styling = { radius, cornerStyle };
+
     return (
         <>
-            <div className="container" style={{ paddingBottom: "12rem" }}>
-                <span></span>
+            <div
+                className="container"
+                style={{ paddingTop: "2rem", paddingBottom: "12rem" }}
+            >
                 <h1 id="top">HyperNeutrino's QR Code Tool</h1>
                 <p>
                     Welcome to my QR code tool! All of the code here is under
@@ -386,39 +395,33 @@ export function Main() {
                 <h2 id="section-1">
                     <a href="#section-1">[#]</a> Section I: Input
                 </h2>
-                <p>
-                    Input the data (this can be a URL or any text) to encode
-                    below. Select an error correction level (refer to the below
-                    table). Select the QR code version (higher version =
-                    larger). If the version selected is too small to encode your
-                    data, the appropriate version will be used. Select a masking
-                    pattern (recommended to set to automatic unless you want to
-                    test a specific one).
-                </p>
-                <table>
-                    <tbody>
-                        <tr>
-                            <th>Level</th>
-                            <th>Notes</th>
-                        </tr>
-                        <tr>
-                            <td>Low (L)</td>
-                            <td>Recovers ~7% corruption</td>
-                        </tr>
-                        <tr>
-                            <td>Medium (M)</td>
-                            <td>Recovers ~15% corruption</td>
-                        </tr>
-                        <tr>
-                            <td>Quartile (Q)</td>
-                            <td>Recovers ~25% corruption</td>
-                        </tr>
-                        <tr>
-                            <td>High (H)</td>
-                            <td>Recovers ~30% corruption</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <p>Input the following:</p>
+                <ul>
+                    <li>
+                        The data to encode (this can be any text, e.g. a URL).
+                    </li>
+                    <li>
+                        An error correction level, which can be one of:
+                        <ul>
+                            <li>Low (L): recovers ~7% corruption</li>
+                            <li>Medium (M): recovers ~15% corruption</li>
+                            <li>Quartile (Q): recovers ~25% corruption</li>
+                            <li>High (H): recovers ~30% corruption</li>
+                        </ul>
+                    </li>
+                    <li>
+                        A QR code version (size) (if the selected version is too
+                        small, the smallest possible version will be used)
+                    </li>
+                    <li>
+                        A module ("pixel") border radius (0% = squares, 50% =
+                        circles/diamonds)
+                    </li>
+                    <li>
+                        A corner style (round = circle-like, diagonal =
+                        octagon/diamond-like)
+                    </li>
+                </ul>
                 <div className="label-grid">
                     <label htmlFor="input-string">
                         <b>Input String:</b>
@@ -455,6 +458,34 @@ export function Main() {
                         min={1}
                         max={40}
                     />
+                    <label htmlFor="radius">
+                        <b>Module Radius (%):</b>
+                    </label>
+                    <input
+                        type="number"
+                        id="radius"
+                        value={radius}
+                        onInput={(e) => setRadius(e.currentTarget.value)}
+                        min={0}
+                        max={50}
+                    />
+                    <label htmlFor="corner-style">
+                        <b>Corner Style:</b>
+                    </label>
+                    <div>
+                        <select
+                            id="corner-style"
+                            value={cornerStyle}
+                            onInput={(e) =>
+                                setCornerStyle(e.currentTarget.value)
+                            }
+                        >
+                            <option value="round">Round (circle-like)</option>
+                            <option value="diagonal">
+                                Diagonal (octagon/diamond-like)
+                            </option>
+                        </select>
+                    </div>
                 </div>
                 <p>
                     <a href="#result">[Jump to Result]</a>
@@ -924,7 +955,7 @@ export function Main() {
                     code. Each finder pattern also has a 1-wide whitespace
                     around it to keep it separate from everything else.
                 </p>
-                <QRImage matrix={matrix} stage="finders" />
+                <QRImage matrix={matrix} {...styling} stage="finders" />
                 <p>
                     Next, we add timing patterns. The seventh row and column of
                     all QR codes alternate between white and black in between
@@ -933,7 +964,7 @@ export function Main() {
                     is used by the scanner to determine the size/version of the
                     QR code and align rows and columns in case of warping.
                 </p>
-                <QRImage matrix={matrix} stage="timing" />
+                <QRImage matrix={matrix} {...styling} stage="timing" />
                 {version === 1 ? (
                     <p>
                         Normally, we would add alignment patterns, but those are
@@ -977,7 +1008,11 @@ export function Main() {
                             right/bottom alignment and place the top/left
                             patterns separately.
                         </p>
-                        <QRImage matrix={matrix} stage="alignment" />
+                        <QRImage
+                            matrix={matrix}
+                            {...styling}
+                            stage="alignment"
+                        />
                     </>
                 )}
                 <p>
@@ -990,7 +1025,7 @@ export function Main() {
                     square to the right of the top of the padding around the
                     bottom-left finder is always a dark module.
                 </p>
-                <QRImage matrix={matrix} stage="reserve-format" />
+                <QRImage matrix={matrix} {...styling} stage="reserve-format" />
                 {version >= 7 ? (
                     <>
                         <p>
@@ -1024,7 +1059,11 @@ export function Main() {
                             Note that the version string is written with the
                             least-significant-bit first.
                         </p>
-                        <QRImage matrix={matrix} stage="version-string" />
+                        <QRImage
+                            matrix={matrix}
+                            {...styling}
+                            stage="version-string"
+                        />
                     </>
                 ) : (
                     <p>
@@ -1046,7 +1085,7 @@ export function Main() {
                     the timing pattern. The last six columns are always written
                     down, up, then down.
                 </p>
-                <QRImage matrix={matrix} stage="write-data" />
+                <QRImage matrix={matrix} {...styling} stage="write-data" />
                 <h2 id="section-6">
                     <a href="#section-6">[#]</a> Section VI: Masking
                 </h2>
@@ -1119,7 +1158,7 @@ export function Main() {
                     </div>
                 </div>
                 <h3>Mask Pattern {mask}</h3>
-                <QRImage matrix={masked[mask]} />
+                <QRImage matrix={masked[mask]} {...styling} />
                 <center>
                     <p>Penalty: {penalties[mask].total}</p>
                 </center>
@@ -1162,7 +1201,7 @@ export function Main() {
                 <p>
                     The optimal pattern is {bestMask}. Here is the final result:
                 </p>
-                <QRImage matrix={masked[bestMask]} />
+                <QRImage matrix={masked[bestMask]} {...styling} />
                 <p>
                     <a href="#top" id="result">
                         [Jump to Top]

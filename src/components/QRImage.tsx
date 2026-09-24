@@ -240,11 +240,21 @@ export function useMasked(matrix: Matrix, level: string, mask: number) {
 
 export function QRImage({
     matrix,
+    radius,
+    cornerStyle,
     stage,
 }: {
     matrix: Matrix | number[][];
+    radius: string;
+    cornerStyle: string;
     stage?: string;
 }) {
+    const RADIUS = Math.min(
+        0.5,
+        Math.max(0, /^\d+$/.test(radius) ? +radius / 100 : 0),
+    );
+    const ROUND = cornerStyle === "round";
+
     const canvas = useRef<HTMLCanvasElement>(null);
 
     const stages = Array.isArray(matrix) ? [["", matrix]] : matrix.stages;
@@ -276,13 +286,165 @@ export function QRImage({
             if (name === stage) break;
         }
 
+        const fills = ["#aaaaaa", "#ffffff", "#111111", "#5555ff"];
+
         for (let i = 0; i < size; i++)
             for (let j = 0; j < size; j++) {
-                ctx.fillStyle = ["#aaaaaa", "#ffffff", "#111111", "#5555ff"][
-                    final[i][j] + 1
-                ];
+                const L = i === 0 ? 0 : final[i - 1][j];
+                const R = i === size - 1 ? 0 : final[i + 1][j];
+                const T = j === 0 ? 0 : final[i][j - 1];
+                const B = j === size - 1 ? 0 : final[i][j + 1];
 
-                ctx.fillRect(i, j, 1, 1);
+                if (final[i][j] === 0) {
+                    const TL = i === 0 || j === 0 ? 0 : final[i - 1][j - 1];
+                    const TR =
+                        i === size - 1 || j === 0 ? 0 : final[i + 1][j - 1];
+                    const BL =
+                        i === 0 || j === size - 1 ? 0 : final[i - 1][j + 1];
+                    const BR =
+                        i === size - 1 || j === size - 1
+                            ? 0
+                            : final[i + 1][j + 1];
+
+                    if (T && T === TL && TL === L) {
+                        ctx.fillStyle = fills[T + 1];
+                        ctx.beginPath();
+                        ctx.moveTo(i, j);
+                        ctx.lineTo(i + RADIUS, j);
+                        if (ROUND)
+                            ctx.arc(
+                                i + RADIUS,
+                                j + RADIUS,
+                                RADIUS,
+                                -Math.PI / 2,
+                                -Math.PI,
+                                true,
+                            );
+                        else ctx.lineTo(i, j + RADIUS);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    if (T && T === TR && TR === R) {
+                        ctx.fillStyle = fills[T + 1];
+                        ctx.beginPath();
+                        ctx.moveTo(i + 1, j);
+                        ctx.lineTo(i + 1 - RADIUS, j);
+                        if (ROUND)
+                            ctx.arc(
+                                i + 1 - RADIUS,
+                                j + RADIUS,
+                                RADIUS,
+                                -Math.PI / 2,
+                                0,
+                            );
+                        else ctx.lineTo(i + 1, j + RADIUS);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    if (B && B === BL && BL === L) {
+                        ctx.fillStyle = fills[B + 1];
+                        ctx.beginPath();
+                        ctx.moveTo(i, j + 1);
+                        ctx.lineTo(i + RADIUS, j + 1);
+                        if (ROUND)
+                            ctx.arc(
+                                i + RADIUS,
+                                j + 1 - RADIUS,
+                                RADIUS,
+                                Math.PI / 2,
+                                Math.PI,
+                            );
+                        else ctx.lineTo(i, j + 1 - RADIUS);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    if (B && B === BR && BR === R) {
+                        ctx.fillStyle = fills[B + 1];
+                        ctx.beginPath();
+                        ctx.moveTo(i + 1, j + 1);
+                        ctx.lineTo(i + 1 - RADIUS, j + 1);
+                        if (ROUND)
+                            ctx.arc(
+                                i + 1 - RADIUS,
+                                j + 1 - RADIUS,
+                                RADIUS,
+                                Math.PI / 2,
+                                0,
+                                true,
+                            );
+                        else ctx.lineTo(i + 1, j + 1 - RADIUS);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                } else {
+                    ctx.fillStyle = fills[final[i][j] + 1];
+
+                    if (RADIUS === 0) {
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(i + RADIUS, j);
+                    if (T || R) ctx.lineTo(i + 1, j);
+                    else {
+                        ctx.lineTo(i + 1 - RADIUS, j);
+                        if (ROUND)
+                            ctx.arc(
+                                i + 1 - RADIUS,
+                                j + RADIUS,
+                                RADIUS,
+                                Math.PI / 2,
+                                0,
+                            );
+                        else ctx.lineTo(i + 1, j + RADIUS);
+                    }
+                    if (B || R) ctx.lineTo(i + 1, j + 1);
+                    else {
+                        ctx.lineTo(i + 1, j + 1 - RADIUS);
+                        if (ROUND)
+                            ctx.arc(
+                                i + 1 - RADIUS,
+                                j + 1 - RADIUS,
+                                RADIUS,
+                                0,
+                                Math.PI / 2,
+                            );
+                        else ctx.lineTo(i + 1 - RADIUS, j + 1);
+                    }
+                    if (B || L) ctx.lineTo(i, j + 1);
+                    else {
+                        ctx.lineTo(i + RADIUS, j + 1);
+                        if (ROUND)
+                            ctx.arc(
+                                i + RADIUS,
+                                j + 1 - RADIUS,
+                                RADIUS,
+                                -Math.PI / 2,
+                                Math.PI,
+                            );
+                        else ctx.lineTo(i, j + 1 - RADIUS);
+                    }
+                    if (T || L) ctx.lineTo(i, j);
+                    else {
+                        ctx.lineTo(i, j + RADIUS);
+                        if (ROUND)
+                            ctx.arc(
+                                i + RADIUS,
+                                j + RADIUS,
+                                RADIUS,
+                                Math.PI,
+                                Math.PI / 2,
+                            );
+                    }
+
+                    ctx.closePath();
+                    ctx.fill();
+                }
             }
 
         ctx.restore();
